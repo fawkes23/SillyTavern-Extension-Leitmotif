@@ -4,6 +4,7 @@
 // of drum-synth.mjs. Notes are swung by the score's feel and humanised (start
 // and velocity) by timing.mjs. One playback at a time; starting a new one or
 // stopping cancels the old one, even while its samples are still loading.
+import { resumeAudioContext, unlockAudioContext } from './audio-unlock.mjs';
 import { createDrumSynth } from './drum-synth.mjs';
 import { findLoopPoints } from './loop-points.mjs';
 import { DRUMS_ROLE } from './score.mjs';
@@ -197,14 +198,30 @@ export function createPlayback({ soundfontUrl, sampleUrlBase, logTag, onStop }) 
     let timer;
     let activePlayers = [];
 
-    function ensureAudioContext() {
+    function getAudioContext() {
         const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
         if (!AudioContextConstructor) {
             throw new Error('This browser does not support the Web Audio API.');
         }
         audioContext ??= new AudioContextConstructor();
         masterCompressor ??= createMasterChain(audioContext);
-        return audioContext.resume();
+        return audioContext;
+    }
+
+    // Call synchronously inside a user's tap or click, before anything is
+    // awaited: iOS starts audio only from inside a gesture.
+    function unlock() {
+        try {
+            unlockAudioContext(getAudioContext(), { navigatorObject: globalThis.navigator });
+        } catch (error) {
+            console.warn(logTag, 'Could not unlock audio:', error);
+        }
+    }
+
+    // Resolves true once audio runs, false while the browser still blocks it
+    // (iOS outside a gesture); never hangs.
+    function ensureAudioContext() {
+        return resumeAudioContext(getAudioContext());
     }
 
     function stop() {
@@ -272,6 +289,7 @@ export function createPlayback({ soundfontUrl, sampleUrlBase, logTag, onStop }) 
     }
 
     return {
+        unlock,
         ensureAudioContext,
         play,
         stop,

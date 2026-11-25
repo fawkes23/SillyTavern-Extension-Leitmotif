@@ -50,6 +50,9 @@ const DEFAULT_SETTINGS = {
 let currentScore;
 let currentCharacterName = 'character';
 let generating = false;
+// A theme that arrived while the browser still blocked audio (iOS outside a
+// tap): the toolbar button offers to play it, and the next tap starts it.
+let pendingPlay = false;
 const loadMidiWriter = createScriptLoader(new URL('lib/midiwriter.js', EXT_URL).href, 'MidiWriter');
 const playback = createPlayback({
     soundfontUrl: new URL('lib/soundfont-player.min.js', EXT_URL).href,
@@ -176,10 +179,13 @@ function updateToolbar() {
     const enabled = extension_settings[MODULE]?.enabled === true;
 
     if (button) {
-        const state = generating ? 'generating' : playback.isActive() ? 'playing' : 'idle';
+        const state = generating
+            ? 'generating'
+            : playback.isActive() ? 'playing' : pendingPlay ? 'ready' : 'idle';
         const presentation = {
             generating: { icon: 'fa-spinner extensionsMenuExtensionButton st-leitmotif-spinner', title: 'Generating theme', label: 'Generating Theme' },
             playing: { icon: 'fa-stop extensionsMenuExtensionButton', title: 'Stop theme', label: 'Stop Theme' },
+            ready: { icon: 'fa-play extensionsMenuExtensionButton', title: 'Play theme', label: 'Play Theme' },
             idle: { icon: 'fa-music extensionsMenuExtensionButton', title: 'Generate theme', label: 'Generate Theme' },
         }[state];
 
@@ -244,8 +250,57 @@ function handleToolbarClick() {
         playback.stop();
         return;
     }
-    if (!generating) {
-        handleGenerateClick();
+    if (generating) {
+        return;
+    }
+    // Unlock audio inside the tap itself, before any await: iOS refuses to
+    // start audio later, once the model calls have finished.
+    playback.unlock();
+    if (pendingPlay && currentScore) {
+        playPendingTheme();
+        return;
+    }
+    handleGenerateClick();
+}
+
+function reportFailure(error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error(LOG_TAG, 'Theme generation or playback failed:', error);
+    updateStatus(getIdleStatus(Boolean(currentScore)));
+    toastr.error(detail, 'Leitmotif', { timeOut: 12000, extendedTimeOut: 2000 });
+}
+
+// Plays a score, or, while the browser still blocks audio, leaves it waiting
+// behind the Play Theme button for the user's next tap.
+async function startPlayback(score) {
+    if (!await playback.ensureAudioContext()) {
+        console.warn(LOG_TAG, 'The browser has not allowed audio yet; waiting for a tap to play the theme.');
+        pendingPlay = true;
+        updateToolbar();
+        updateStatus('Theme ready. Tap Play Theme in the extensions menu to hear it.');
+        return;
+    }
+    pendingPlay = false;
+    updateStatus('Theme generated. Loading sampled instruments…');
+    await playback.play(score, {
+        onLoading: () => {
+            updateToolbar();
+            updateStatus('Loading instrument samples…');
+        },
+        onStarted: () => {
+            updateStatus(`Playing ${currentCharacterName}'s looping theme.`);
+            updateToolbar();
+        },
+    });
+}
+
+async function playPendingTheme() {
+    try {
+        await startPlayback(currentScore);
+    } catch (error) {
+        reportFailure(error);
+    } finally {
+        updateToolbar();
     }
 }
 
@@ -296,6 +351,7 @@ async function handleGenerateClick() {
     }
 
     generating = true;
+    pendingPlay = false;
     updateToolbar();
 
     try {
@@ -366,23 +422,9 @@ async function handleGenerateClick() {
 
         currentScore = score;
         $('#st_leitmotif_download').prop('disabled', false);
-        await playback.ensureAudioContext();
-        updateStatus('Theme generated. Loading sampled instruments…');
-        await playback.play(score, {
-            onLoading: () => {
-                updateToolbar();
-                updateStatus('Loading instrument samples…');
-            },
-            onStarted: () => {
-                updateStatus(`Playing ${currentCharacterName}'s looping theme.`);
-                updateToolbar();
-            },
-        });
+        await startPlayback(score);
     } catch (error) {
-        const detail = error instanceof Error ? error.message : String(error);
-        console.error(LOG_TAG, 'Theme generation or playback failed:', error);
-        updateStatus(getIdleStatus(Boolean(currentScore)));
-        toastr.error(detail, 'Leitmotif', { timeOut: 12000, extendedTimeOut: 2000 });
+        reportFailure(error);
     } finally {
         generating = false;
         updateToolbar();
