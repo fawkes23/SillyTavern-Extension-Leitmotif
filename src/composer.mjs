@@ -1,8 +1,8 @@
 // The composer prompt: stage 2 of a generation, turning the music brief, the
 // character profile and the recent story into the request for a looping score
 // (its arrangement rules, a drums track when the brief asks for drums or the
-// scene calls for them, the mood palette as a starting point), and the labels
-// that name each instrument in it.
+// scene calls for them, the mood and setting palettes as a starting point),
+// and the labels that name each instrument in it.
 import { musicBriefToPromptSection, varietySeedToBriefAddition } from './brief.mjs';
 import { moodPaletteToPromptSection } from './mood-palette.mjs';
 import { DRUM_INSTRUMENT, DRUM_NOTES, DRUMS_ROLE, INSTRUMENTS, TRACK_ROLES } from './score.mjs';
@@ -53,11 +53,11 @@ function getSceneRule(drums) {
     return `- Scene: <recent_story> holds the latest chat messages, the last ones weighing most. The brief is the character's identity: keep its motif, key centre and signature timbre recognisable. Set mood, energy, density, register and dynamics from where the story is now: danger, combat or a chase drive the rhythm, sit lower and push the bass; grief or loss thins the parts, slows their motion and softens them; tenderness or romance warms the voicings and slows the harmony; joy or celebration brightens the register and bounces the groove; mystery or dread uses sparse, suspended, chromatic colour; calm opens the voicings with few onsets. Where the scene and the brief's energy plan disagree, the scene wins; the key may move to its relative or parallel mode if the scene asks for it.${drumsOption}`;
 }
 
-// How the mood palette is used: the mood that fits, a flavour by setting and
-// era, as a nudge.
+// How the palettes are used: one or two emotions, a flavour by setting and
+// era, the setting's colour, as a nudge.
 function getPaletteRule(story) {
     const subject = story ? 'the scene in <recent_story> and the character' : 'the character';
-    return `- Mood palette: <mood_palette> lists moods, the story cues that point to each, and a few flavours of each with instruments, harmony, rhythm and style. Find the mood that fits ${subject} (blend two for a mixed mood, such as a sad romance or a cheerful menace), then pick the flavour by setting and era: present-day, urban or online settings lean to [modern], historical and fantasy settings to [classic] and [folk], futuristic ones to [electronic]; the brief's genre references and era beat this. A [contrast] flavour, or any flavour played against the scene (a cheerful tune under violence, a lullaby in horror), fits only an ironic, comic or eerie story. Take the supporting instruments, the harmony and the groove from the flavour; its beat cues go to a drums track only when one is allowed, otherwise bass and harmony carry them. These are nudges, not limits: the brief's named timbres and the motif's instrument still lead.`;
+    return `- Mood palette: <mood_palette> lists emotions, the story cues that point to each, and flavours of music that carry each (instruments, harmony, rhythm, style); <setting_palette> adds the colour of a place or time. Find the one or two emotions that fit ${subject} (blend two for a mixed feeling, such as hope inside grief or affection with embarrassment), then pick the flavour by setting and era: present-day, urban or online settings lean to [modern], historical and fantasy settings to [classic] and [folk], futuristic ones to [electronic]; the brief's genre references and era beat this. When the setting is clear, colour the flavour with its <setting_palette> line. A [contrast] flavour, or any flavour played against the scene (a cheerful tune under violence, a lullaby in horror), fits only an ironic, comic or eerie story. Take the supporting instruments, the harmony and the groove from the flavour; its beat cues go to a drums track only when one is allowed, otherwise bass and harmony carry them. These are nudges, not limits: the brief's named timbres and the motif's instrument still lead.`;
 }
 
 // character: { name, profileFields } from buildCharacterProfile; profileFields
