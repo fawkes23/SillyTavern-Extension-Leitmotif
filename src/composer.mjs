@@ -1,8 +1,10 @@
 // The composer prompt: stage 2 of a generation, turning the music brief, the
 // character profile and the recent story into the request for a looping score
 // (its arrangement rules, a drums track when the brief asks for drums or the
-// scene calls for them), and the labels that name each instrument in it.
+// scene calls for them, the mood palette as a starting point), and the labels
+// that name each instrument in it.
 import { musicBriefToPromptSection, varietySeedToBriefAddition } from './brief.mjs';
+import { moodPaletteToPromptSection } from './mood-palette.mjs';
 import { DRUM_INSTRUMENT, DRUM_NOTES, DRUMS_ROLE, INSTRUMENTS, TRACK_ROLES } from './score.mjs';
 import { escapeXml } from './xml.mjs';
 
@@ -49,6 +51,12 @@ function getSceneRule(drums) {
         ? ''
         : ` If the scene is combat, a chase, a dance or a celebration, you may add a drums track (instrument ${DRUM_INSTRUMENT}, notes from ${Object.keys(DRUM_NOTES).join(', ')}), written last.`;
     return `- Scene: <recent_story> holds the latest chat messages, the last ones weighing most. The brief is the character's identity: keep its motif, key centre and signature timbre recognisable. Set mood, energy, density, register and dynamics from where the story is now: danger, combat or a chase drive the rhythm, sit lower and push the bass; grief or loss thins the parts, slows their motion and softens them; tenderness or romance warms the voicings and slows the harmony; joy or celebration brightens the register and bounces the groove; mystery or dread uses sparse, suspended, chromatic colour; calm opens the voicings with few onsets. Where the scene and the brief's energy plan disagree, the scene wins; the key may move to its relative or parallel mode if the scene asks for it.${drumsOption}`;
+}
+
+// How the mood palette is used: the rows that fit, blended, as a nudge.
+function getPaletteRule(story) {
+    const subject = story ? 'the scene in <recent_story> and the character' : 'the character';
+    return `- Mood palette: <mood_palette> lists common associations of a mood with instruments, mode and harmony, rhythm and style. Find the one or two rows that fit ${subject}, and take the supporting instruments, the mode and the groove from them; blend two rows when the mood is mixed (a sad romance, a cheerful menace). They are nudges, not limits: the brief's named timbres and the motif's instrument still lead.`;
 }
 
 // character: { name, profileFields } from buildCharacterProfile; profileFields
@@ -101,6 +109,7 @@ Requirements:
 - Use note names such as C4, F#3, or Bb4. Octaves: bass strictly 1-2 (bass in octave 3 or higher is wrong; write D2 or E2, not D3 or E3); harmony 3-6; melody 3-6; counter 3-6; texture 3-6. Chords may contain up to five notes.
 - Use the brief's key, mode, feel, and density as the foundation. Build a coherent harmonic cycle that fits them and develop it with subtle variation in longer loops. The brief's harmony flavor suggests the voicings (7ths, 9ths, suspensions, clusters — whatever fits); keep bass and melody compatible with the harmony. Dense themes use more than a two-chord vamp. The mode's colour tone sits in the melody and resolves. No held note a semitone from a chord tone in the same octave.
 - Do not default to a warm pad over a slow four-chord loop. The brief's genre references, era, and groove beat any generic ambient style. If the brief is restless, jagged, or joyous, the loop must sound like it.${sceneRule}
+${getPaletteRule(story)}
 ${motifRule}
 - The <surprise> happens once: a borrowed chord, a register drop, a tacet part or a rhythmic shift, at its described point, small enough that bar one still follows seamlessly.
 - Follow the <energy_curve>: measure velocity, density, and register against it across the loop.
@@ -113,6 +122,8 @@ ${drumsRule}
 - Texture has at most 2 notes, an octave away from the harmony voicing, in a rhythm of its own; a drone is root and fifth, changed with the chord. Vary velocities for accents and softer notes; avoid random notes, constant-volume patterns, and excessive density.
 - Shape the loop in four-bar phrases, mapping the <phrase_plan> functions onto them in order (without one: statement, answer with a new ending, sequence on another degree, fragment, climax, cadence); the last returns and resolves into bar one so the loop feels seamless.
 - Plan briefly; do not draft the score before writing it. Return no additional keys or prose.
+
+${moodPaletteToPromptSection()}
 
 ${briefSection}${seedSection}${storySection}
 
