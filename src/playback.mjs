@@ -2,14 +2,19 @@
 // shipped in samples/, held notes on sustained instruments looping their sample
 // at points found by loop-points.mjs, the drums track on the synthesized kit
 // of drum-synth.mjs. Notes are swung by the score's feel and humanised (start
-// and velocity) by timing.mjs. One playback at a time; starting a new one or
-// stopping cancels the old one, even while its samples are still loading.
+// and velocity) by timing.mjs; every track plays through its own bus of
+// mix.mjs (stereo place, low cut, room reverb). One playback at a time:
+// starting a new one crossfades out the old, stopping fades it out, even
+// while its samples are still loading.
 import { resumeAudioContext, unlockAudioContext } from './audio-unlock.mjs';
 import { createDrumSynth } from './drum-synth.mjs';
 import { findLoopPoints } from './loop-points.mjs';
+import { createReverb, createTrackBus } from './mix.mjs';
 import { DRUMS_ROLE } from './score.mjs';
 import { createScriptLoader } from './script-loader.mjs';
 import { createRandom, humanize, swingEvent } from './timing.mjs';
+
+export { createReverb } from './mix.mjs';
 
 // Instruments whose FluidR3 samples are sustained long tones: holding a note past
 // the sample length must keep looping the steady-state tail instead of falling
@@ -115,18 +120,20 @@ function getNoteOptions(buffer, { velocity, requestedLength, sustainedInstrument
 }
 
 // One player per track: the synthesized kit for drums, a sample file otherwise.
+// Both callbacks also receive the track, for its role.
 export function loadTrackPlayers(tracks, { loadSample, createDrums }) {
     return Promise.all(tracks.map(track =>
-        track.role === DRUMS_ROLE ? createDrums() : loadSample(track.instrument)));
+        track.role === DRUMS_ROLE ? createDrums(track) : loadSample(track.instrument, track)));
 }
 
 // The same humanisation every time a theme starts, varying from pass to pass.
 const HUMANIZE_SEED = 1;
 
-// The master bus every player writes into: a compressor, then a gain. Exported
-// with schedulePass and loadScorePlayers so tools/music-eval/render-audio.mjs
+// The master bus every player writes into: a compressor, then a gain, into
+// output (the context's speakers by default). Exported with schedulePass,
+// loadScorePlayers and createReverb so tools/music-eval/render-audio.mjs
 // renders a theme offline through the same chain.
-export function createMasterChain(audioContext) {
+export function createMasterChain(audioContext, output = audioContext.destination) {
     const compressor = audioContext.createDynamicsCompressor();
     compressor.threshold.value = -16;
     compressor.knee.value = 12;
@@ -136,7 +143,7 @@ export function createMasterChain(audioContext) {
     const masterGain = audioContext.createGain();
     masterGain.gain.value = 0.75;
     compressor.connect(masterGain);
-    masterGain.connect(audioContext.destination);
+    masterGain.connect(output);
     return compressor;
 }
 
@@ -171,14 +178,16 @@ export function schedulePass(score, players, { startTime, random }) {
 }
 
 // The players for a score: the drum synth and the shipped samples, loaded
-// through soundfont-player (the Soundfont global) into destination.
-export function loadScorePlayers(soundfont, audioContext, score, { sampleUrlBase, destination, logTag }) {
+// through soundfont-player (the Soundfont global), each into its own track
+// bus that plays into destination and, when given, sends to reverb.
+export function loadScorePlayers(soundfont, audioContext, score, { sampleUrlBase, destination, reverb, logTag }) {
+    const busFor = track => createTrackBus(audioContext, { role: track.role, destination, reverb });
     return loadTrackPlayers(score.tracks, {
-        createDrums: () => createDrumSynth(audioContext, { destination }),
-        loadSample: async instrument => {
+        createDrums: track => createDrumSynth(audioContext, { destination: busFor(track) }),
+        loadSample: async (instrument, track) => {
             const url = new URL(`${instrument}-mp3.js`, sampleUrlBase).href;
             try {
-                return await soundfont.instrument(audioContext, url, { destination });
+                return await soundfont.instrument(audioContext, url, { destination: busFor(track) });
             } catch (error) {
                 console.error(logTag, `Could not load the sample file for ${instrument}`, url, error);
                 throw new Error(`The ${instrument} sample could not be loaded. The extension appears to be installed incompletely; reinstall it.`);
@@ -187,24 +196,42 @@ export function loadScorePlayers(soundfont, audioContext, score, { sampleUrlBase
     });
 }
 
+const START_DELAY = 0.08;
+const FADE_IN_SECONDS = 0.4;
+const FADE_OUT_SECONDS = 1.2;
+const PAUSE_FADE_SECONDS = 0.15;
+const RESUME_FADE_SECONDS = 0.3;
+
 // soundfontUrl: the soundfont-player script; sampleUrlBase: the samples/ folder
-// URL; onStop: called after every stop, to show the idle state.
-export function createPlayback({ soundfontUrl, sampleUrlBase, logTag, onStop }) {
+// URL; onStop: called after every stop, to show the idle state; onStateChange:
+// called with 'paused', 'playing', 'blocked' (a resume the browser refused) or
+// 'interrupted' (the system took the audio away, e.g. a call on iOS).
+export function createPlayback({ soundfontUrl, sampleUrlBase, logTag, onStop, onStateChange = () => {} }) {
     const loadSoundfont = createScriptLoader(soundfontUrl, 'Soundfont');
     let audioContext;
-    let masterCompressor;
+    let masterInput;
+    let volumeGain;
+    let volume = 0.64;
     let active = false;
+    let paused = false;
+    let pauseToken = 0;
     let generation = 0;
     let timer;
-    let activePlayers = [];
+    // The theme that is sounding: { fader, players, nextStart, scheduleLoop }.
+    let session = null;
 
     function getAudioContext() {
         const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
         if (!AudioContextConstructor) {
             throw new Error('This browser does not support the Web Audio API.');
         }
-        audioContext ??= new AudioContextConstructor();
-        masterCompressor ??= createMasterChain(audioContext);
+        if (!audioContext) {
+            audioContext = new AudioContextConstructor();
+            volumeGain = audioContext.createGain();
+            volumeGain.gain.value = volume;
+            volumeGain.connect(audioContext.destination);
+            masterInput = createMasterChain(audioContext, volumeGain);
+        }
         return audioContext;
     }
 
@@ -224,67 +251,198 @@ export function createPlayback({ soundfontUrl, sampleUrlBase, logTag, onStop }) 
         return resumeAudioContext(getAudioContext());
     }
 
-    function stop() {
-        generation += 1;
-        active = false;
+    function rampTo(param, value, seconds) {
+        const now = audioContext.currentTime;
+        param.cancelScheduledValues(now);
+        param.setValueAtTime(param.value, now);
+        param.linearRampToValueAtTime(value, now + Math.max(0.005, seconds));
+    }
+
+    function clearTimer() {
         if (timer) {
             clearTimeout(timer);
             timer = undefined;
         }
-        for (const player of activePlayers) {
-            player.stop();
+    }
+
+    // Schedules the next pass shortly before the current one ends.
+    function armTimer(current) {
+        clearTimer();
+        timer = setTimeout(
+            () => current.scheduleLoop(Math.max(current.nextStart, audioContext.currentTime + START_DELAY)),
+            Math.max(0, (current.nextStart - audioContext.currentTime - 0.1) * 1000),
+        );
+    }
+
+    // Fades a theme out over seconds (0: at once), then stops its players.
+    function release(old, seconds) {
+        const silence = () => {
+            for (const player of old.players) {
+                player.stop();
+            }
+            old.fader.disconnect();
+        };
+        if (seconds <= 0) {
+            silence();
+            return;
         }
-        activePlayers = [];
+        try {
+            rampTo(old.fader.gain, 0, seconds);
+        } catch {
+            silence();
+            return;
+        }
+        setTimeout(silence, seconds * 1000 + 100);
+    }
+
+    // Stops the theme, fading it out unless fade is false or it is paused.
+    function stop({ fade = true } = {}) {
+        generation += 1;
+        active = false;
+        const wasPaused = paused;
+        paused = false;
+        pauseToken += 1;
+        clearTimer();
+        const old = session;
+        session = null;
+        if (old) {
+            const running = audioContext?.state === 'running';
+            release(old, fade && running && !wasPaused ? FADE_OUT_SECONDS : 0);
+        }
         onStop();
     }
 
-    async function loadPlayers(score) {
-        const soundfont = await loadSoundfont();
-        // Samples ship with the extension in samples/; there is no network
-        // fallback, so a missing file means an incomplete install.
-        return loadScorePlayers(soundfont, audioContext, score, { sampleUrlBase, destination: masterCompressor, logTag });
-    }
-
-    // Loads the samples, then loops the score until stop() or the next play().
+    // Loads the samples, then loops the score until stop() or the next play(),
+    // which crossfades: the old theme fades out while this one fades in.
     // onLoading runs once playback counts as active, onStarted once the first
     // pass is scheduled. Needs ensureAudioContext() to have run first.
     async function play(score, { onLoading, onStarted }) {
+        getAudioContext();
         stop();
         const current = generation;
         active = true;
         onLoading();
+        const fader = audioContext.createGain();
+        fader.gain.value = 0;
+        fader.connect(masterInput);
         try {
-            const players = await loadPlayers(score);
+            const reverb = createReverb(audioContext, fader);
+            const soundfont = await loadSoundfont();
+            // Samples ship with the extension in samples/; there is no network
+            // fallback, so a missing file means an incomplete install.
+            const players = await loadScorePlayers(soundfont, audioContext, score, {
+                sampleUrlBase,
+                destination: fader,
+                reverb,
+                logTag,
+            });
             if (current !== generation) {
                 for (const player of players) {
                     player.stop();
                 }
+                fader.disconnect();
                 return;
             }
 
-            activePlayers = players;
             const loopLength = score.loopBeats * (60 / score.tempo);
             const random = createHumanizer();
-
-            const scheduleLoop = (startTime = audioContext.currentTime + 0.08) => {
+            const playing = { fader, players, nextStart: 0, scheduleLoop: null };
+            playing.scheduleLoop = startTime => {
                 if (current !== generation) {
                     return;
                 }
                 schedulePass(score, players, { startTime, random });
-                const nextStart = startTime + loopLength;
-                timer = setTimeout(
-                    () => scheduleLoop(Math.max(nextStart, audioContext.currentTime + 0.08)),
-                    Math.max(0, (nextStart - audioContext.currentTime - 0.1) * 1000),
-                );
+                playing.nextStart = startTime + loopLength;
+                if (!paused) {
+                    armTimer(playing);
+                }
             };
-
+            session = playing;
+            rampTo(fader.gain, 1, START_DELAY + FADE_IN_SECONDS);
             onStarted();
-            scheduleLoop();
+            playing.scheduleLoop(audioContext.currentTime + START_DELAY);
         } catch (error) {
+            fader.disconnect();
             if (current === generation) {
-                stop();
+                stop({ fade: false });
             }
             throw error;
+        }
+    }
+
+    // Fades out briefly, then suspends the audio clock, so the loop picks up
+    // where it stopped on resume().
+    function pause() {
+        if (!active || paused || !session) {
+            return false;
+        }
+        paused = true;
+        clearTimer();
+        const token = ++pauseToken;
+        rampTo(session.fader.gain, 0, PAUSE_FADE_SECONDS);
+        setTimeout(() => {
+            if (paused && token === pauseToken) {
+                Promise.resolve()
+                    .then(() => audioContext.suspend())
+                    .catch(() => {});
+            }
+        }, PAUSE_FADE_SECONDS * 1000 + 40);
+        onStateChange('paused');
+        return true;
+    }
+
+    // Call after unlock() inside a tap. Resolves true once the theme plays
+    // again, false if the browser still blocks audio.
+    function resume() {
+        if (!active || !paused || !session) {
+            return Promise.resolve(false);
+        }
+        const current = session;
+        pauseToken += 1;
+        return resumeAudioContext(audioContext).then(running => {
+            if (current !== session || !paused) {
+                return running;
+            }
+            if (!running) {
+                onStateChange('blocked');
+                return false;
+            }
+            paused = false;
+            rampTo(current.fader.gain, 1, RESUME_FADE_SECONDS);
+            armTimer(current);
+            onStateChange('playing');
+            return true;
+        });
+    }
+
+    // After the page comes back (an app switch, a call, a locked screen): a
+    // playing theme resumes if the browser allows it, else waits paused for a
+    // tap on Resume.
+    function recover() {
+        if (!active || paused || !session || !audioContext || audioContext.state === 'running') {
+            return Promise.resolve(true);
+        }
+        const current = session;
+        return resumeAudioContext(audioContext).then(running => {
+            if (current !== session || paused) {
+                return running;
+            }
+            if (running) {
+                armTimer(current);
+                return true;
+            }
+            paused = true;
+            clearTimer();
+            onStateChange('interrupted');
+            return false;
+        });
+    }
+
+    // value: 0 to 1, applied as gain with a short glide.
+    function setVolume(value) {
+        volume = Math.min(1, Math.max(0, value));
+        if (volumeGain) {
+            volumeGain.gain.setTargetAtTime(volume, audioContext.currentTime, 0.05);
         }
     }
 
@@ -293,6 +451,11 @@ export function createPlayback({ soundfontUrl, sampleUrlBase, logTag, onStop }) 
         ensureAudioContext,
         play,
         stop,
+        pause,
+        resume,
+        recover,
+        setVolume,
         isActive: () => active,
+        isPaused: () => paused,
     };
 }

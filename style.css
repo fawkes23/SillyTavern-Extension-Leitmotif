@@ -32,9 +32,14 @@
     box-shadow: 0 0 0 1px var(--active);
 }
 
-#st_leitmotif_tempo {
+#st_leitmotif_tempo,
+.st-leitmotif-slider input[type="range"] {
     display: block;
     width: 100%;
+}
+
+.st-leitmotif-settings .st-leitmotif-slider label {
+    display: block;
 }
 
 .st-leitmotif-settings #st_leitmotif_download {

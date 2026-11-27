@@ -4,6 +4,14 @@
 // awaiting it hangs forever. unlockAudioContext runs synchronously inside the
 // tap; resumeAudioContext checks later without ever hanging.
 
+function callResume(audioContext) {
+    const result = audioContext.resume();
+    if (result && typeof result.catch === 'function') {
+        result.catch(() => {});
+    }
+    return result;
+}
+
 // Called inside the user's tap, before anything is awaited.
 export function unlockAudioContext(audioContext, { navigatorObject } = {}) {
     // Treat Web Audio as media playback, so the iPhone's silent switch does not
@@ -28,10 +36,13 @@ export function unlockAudioContext(audioContext, { navigatorObject } = {}) {
         // Not needed where resume() alone unlocks audio.
     }
     if (audioContext.state !== 'running') {
-        // Not awaited: the call itself must happen inside the gesture.
-        Promise.resolve()
-            .then(() => audioContext.resume())
-            .catch(() => {});
+        // Called synchronously, not awaited: the call itself must happen
+        // inside the gesture.
+        try {
+            callResume(audioContext);
+        } catch {
+            // A browser that refuses here is checked again by resumeAudioContext.
+        }
     }
 }
 
@@ -57,8 +68,14 @@ export function resumeAudioContext(audioContext, {
             resolve(running);
         };
         timer = setTimer(() => finish(audioContext.state === 'running'), timeoutMs);
-        Promise.resolve()
-            .then(() => audioContext.resume())
+        let result;
+        try {
+            result = callResume(audioContext);
+        } catch {
+            finish(false);
+            return;
+        }
+        Promise.resolve(result)
             .then(() => finish(audioContext.state === 'running'), () => finish(false));
     });
 }

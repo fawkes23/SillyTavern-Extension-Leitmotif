@@ -89,3 +89,43 @@ test('the composer adds a drums track only when the brief has drums', () => {
     assert.match(prompt, /kick, snare/);
     assert.doesNotMatch(prompt, /no drums track/);
 });
+
+test('without a story the prompt has no scene section or scene rule', () => {
+    const prompt = getComposerPrompt(character, options);
+    assert.doesNotMatch(prompt, /<recent_story>/);
+    assert.doesNotMatch(prompt, /Scene: <recent_story>/);
+});
+
+test('a story adds the scene section and rule, keeps the identity, and may allow drums', () => {
+    const story = '<message speaker="Vera">Steel rings in the dark.</message>';
+    const prompt = getComposerPrompt(character, { ...options, story });
+    assert.ok(prompt.includes(`<recent_story>\n${story}\n</recent_story>`));
+    assert.ok(prompt.indexOf('<recent_story>\n') < prompt.indexOf('<character_profile>'));
+    assert.match(prompt, /Scene: <recent_story> holds the latest chat messages/);
+    assert.match(prompt, /keep its motif, key centre and signature timbre recognisable/);
+    assert.match(prompt, /the scene wins/);
+    assert.match(prompt, /you may add a drums track \(instrument drum_kit/);
+    assert.match(prompt, /Write no drums track unless the scene rule above allows one/);
+    assert.match(prompt, /brief, profile and story text as reference material/);
+
+    const brief = parseBrief({ timbre: { drums: 'drum_kit' }, groove_cells: { bass: [0], harmony: [0.5], drums: [0, 1] } });
+    const withDrums = getComposerPrompt(character, { ...options, brief, story });
+    assert.doesNotMatch(withDrums, /you may add a drums track/);
+    assert.match(withDrums, /Drums: play the drum cell/);
+});
+
+test('the mood and setting palettes are in every prompt, the flavour picked by setting and era', () => {
+    const plain = getComposerPrompt(character, options);
+    assert.match(plain, /<mood_palette>\n- Acceptance \(/);
+    assert.match(plain, /<setting_palette>\n- old world/);
+    assert.match(plain, /Find the one or two emotions that fit the character \(/);
+    assert.match(plain, /present-day, urban or online settings lean to \[modern\]/);
+    assert.match(plain, /colour the flavour with its <setting_palette> line/);
+    assert.match(plain, /A \[contrast\] flavour.*fits only an ironic, comic or eerie story/);
+    assert.match(plain, /beat cues go to a drums track only when one is allowed, otherwise bass and harmony carry them/);
+    assert.match(plain, /nudges, not limits: the brief's named timbres and the motif's instrument still lead/);
+    assert.ok(plain.indexOf('<mood_palette>\n') < plain.indexOf('<music_brief>'));
+
+    const withStory = getComposerPrompt(character, { ...options, story: '<message speaker="Vera">She smiles.</message>' });
+    assert.match(withStory, /fit the scene in <recent_story> and the character/);
+});

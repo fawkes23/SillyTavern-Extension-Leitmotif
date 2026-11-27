@@ -1,4 +1,4 @@
-// Leitmotif's SillyTavern wiring: the settings panel, the toolbar button, the
+// Leitmotif's SillyTavern wiring: the settings panel, the toolbar buttons, the
 // two model calls and the generation flow; the logic lives in src/.
 import { generateRaw, saveSettingsDebounced } from '../../../../script.js';
 import {
@@ -27,7 +27,8 @@ import { COMPOSER_SYSTEM_PROMPT, getComposerPrompt, getComposerRetryPrompt, getS
 import { downloadScoreAsMidi } from './src/midi-export.mjs';
 import { createPlayback } from './src/playback.mjs';
 import { createScriptLoader } from './src/script-loader.mjs';
-import { getIdleStatus } from './src/status.mjs';
+import { formatElapsed, getIdleStatus } from './src/status.mjs';
+import { buildStoryExcerpt, STORY_MESSAGE_LIMITS } from './src/story.mjs';
 
 const MODULE = 'leitmotif';
 const LEGACY_MODULE = 'vibeComposerMidi';
@@ -44,6 +45,8 @@ const DEFAULT_SETTINGS = {
     tempo: 74,
     characterTempo: true,
     variety: 'standard',
+    storyMessages: STORY_MESSAGE_LIMITS.default,
+    volume: 80,
 };
 
 
@@ -53,6 +56,10 @@ let generating = false;
 // A theme that arrived while the browser still blocked audio (iOS outside a
 // tap): the toolbar button offers to play it, and the next tap starts it.
 let pendingPlay = false;
+// The status line while generating: a message and the time since the tap.
+let progressTimer;
+let progressMessage = '';
+let progressStartedAt = 0;
 const loadMidiWriter = createScriptLoader(new URL('lib/midiwriter.js', EXT_URL).href, 'MidiWriter');
 const playback = createPlayback({
     soundfontUrl: new URL('lib/soundfont-player.min.js', EXT_URL).href,
@@ -62,7 +69,28 @@ const playback = createPlayback({
         updateToolbar();
         updateStatus(getIdleStatus(Boolean(currentScore)));
     },
+    onStateChange: reason => {
+        updateToolbar();
+        if (!playback.isActive()) {
+            return;
+        }
+        if (reason === 'interrupted') {
+            updateStatus('Audio was interrupted. Choose Resume Theme in the Extensions menu to continue.');
+        } else if (reason === 'blocked') {
+            updateStatus('The browser is still blocking audio. Choose Resume Theme again.');
+        } else {
+            updateStatus(playback.isPaused()
+                ? `Paused ${currentCharacterName}'s theme.`
+                : `Playing ${currentCharacterName}'s looping theme.`);
+        }
+    },
 });
+
+// Volume 0-100 as gain, on a square curve so the slider feels even to the ear.
+function applyVolume() {
+    const percent = extension_settings[MODULE].volume;
+    playback.setVolume((percent / 100) ** 2);
+}
 
 function loadSettings() {
     if (extension_settings[MODULE] === undefined && extension_settings[LEGACY_MODULE] !== undefined) {
@@ -75,22 +103,30 @@ function loadSettings() {
         DEFAULT_SETTINGS,
         extension_settings[MODULE] ?? {},
     );
+    const settings = extension_settings[MODULE];
     // Remove settings from the removed MIDI playback mode and instrument pins.
-    delete extension_settings[MODULE].playbackMode;
-    delete extension_settings[MODULE].midiOutput;
-    delete extension_settings[MODULE].instruments;
-    if (!AVAILABLE_LENGTHS_SECONDS.includes(extension_settings[MODULE].lengthSeconds)) {
-        extension_settings[MODULE].lengthSeconds = DEFAULT_SETTINGS.lengthSeconds;
+    delete settings.playbackMode;
+    delete settings.midiOutput;
+    delete settings.instruments;
+    if (!AVAILABLE_LENGTHS_SECONDS.includes(settings.lengthSeconds)) {
+        settings.lengthSeconds = DEFAULT_SETTINGS.lengthSeconds;
     }
-    if (!Number.isInteger(extension_settings[MODULE].tempo)
-        || extension_settings[MODULE].tempo < 50
-        || extension_settings[MODULE].tempo > 130) {
-        extension_settings[MODULE].tempo = DEFAULT_SETTINGS.tempo;
+    if (!Number.isInteger(settings.tempo) || settings.tempo < 50 || settings.tempo > 130) {
+        settings.tempo = DEFAULT_SETTINGS.tempo;
     }
-    extension_settings[MODULE].characterTempo = extension_settings[MODULE].characterTempo === true;
-    if (!VARIETY_LEVELS.includes(extension_settings[MODULE].variety)) {
-        extension_settings[MODULE].variety = DEFAULT_SETTINGS.variety;
+    settings.characterTempo = settings.characterTempo === true;
+    if (!VARIETY_LEVELS.includes(settings.variety)) {
+        settings.variety = DEFAULT_SETTINGS.variety;
     }
+    if (!Number.isInteger(settings.storyMessages)
+        || settings.storyMessages < STORY_MESSAGE_LIMITS.min
+        || settings.storyMessages > STORY_MESSAGE_LIMITS.max) {
+        settings.storyMessages = DEFAULT_SETTINGS.storyMessages;
+    }
+    if (!Number.isInteger(settings.volume) || settings.volume < 0 || settings.volume > 100) {
+        settings.volume = DEFAULT_SETTINGS.volume;
+    }
+    applyVolume();
 }
 
 function updateLengthEstimate() {
@@ -115,6 +151,13 @@ function updateTempoFeedback() {
     $('#st_leitmotif_tempo_feedback').text(extension_settings[MODULE].characterTempo
         ? 'New themes will take their tempo from the character.'
         : `New themes will use ${extension_settings[MODULE].tempo} BPM.`);
+}
+
+function getStoryLabel(count) {
+    if (count === 0) {
+        return 'off (card only)';
+    }
+    return count === 1 ? '1 message' : `${count} messages`;
 }
 
 function updateBriefPreview(brief) {
@@ -155,7 +198,11 @@ function getActiveCharacter() {
     return buildCharacterProfile(character, context.name1);
 }
 
-function getMenuButton(id, title, action) {
+function getMenuButtonHtml(icon, label) {
+    return `<div class="fa-solid ${icon} extensionsMenuExtensionButton" aria-hidden="true"></div><span>${label}</span>`;
+}
+
+function getMenuButton(id, title, icon, action) {
     const button = document.createElement('div');
     button.id = id;
     button.className = 'list-group-item flex-container flexGap5 interactable';
@@ -163,7 +210,7 @@ function getMenuButton(id, title, action) {
     button.setAttribute('role', 'button');
     button.tabIndex = 0;
     button.setAttribute('aria-label', title);
-    button.innerHTML = '<div class="fa-solid fa-music extensionsMenuExtensionButton" aria-hidden="true"></div><span>Generate Theme</span>';
+    button.innerHTML = getMenuButtonHtml(icon, title);
     button.addEventListener('click', action);
     button.addEventListener('keydown', event => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -174,8 +221,20 @@ function getMenuButton(id, title, action) {
     return button;
 }
 
+// Sets a menu button's icon, label and title for a state, rebuilding its
+// content only when the state changes.
+function presentButton(button, state, { icon, title, label }) {
+    button.title = title;
+    button.setAttribute('aria-label', title);
+    if (button.dataset.state !== state) {
+        button.dataset.state = state;
+        button.innerHTML = getMenuButtonHtml(icon, label);
+    }
+}
+
 function updateToolbar() {
     const button = document.getElementById('st_leitmotif_toggle');
+    const pauseButton = document.getElementById('st_leitmotif_pause');
     const enabled = extension_settings[MODULE]?.enabled === true;
 
     if (button) {
@@ -193,12 +252,15 @@ function updateToolbar() {
         button.setAttribute('aria-disabled', String(state === 'generating'));
         button.tabIndex = state === 'generating' ? -1 : 0;
         button.setAttribute('aria-busy', String(state === 'generating'));
-        button.title = presentation.title;
-        button.setAttribute('aria-label', presentation.title);
-        if (button.dataset.state !== state) {
-            button.dataset.state = state;
-            button.innerHTML = `<div class="fa-solid ${presentation.icon} extensionsMenuExtensionButton" aria-hidden="true"></div><span>${presentation.label}</span>`;
-        }
+        presentButton(button, state, presentation);
+    }
+
+    if (pauseButton) {
+        const paused = playback.isPaused();
+        pauseButton.hidden = !enabled || generating || !playback.isActive();
+        presentButton(pauseButton, paused ? 'paused' : 'playing', paused
+            ? { icon: 'fa-play extensionsMenuExtensionButton', title: 'Resume theme', label: 'Resume Theme' }
+            : { icon: 'fa-pause extensionsMenuExtensionButton', title: 'Pause theme', label: 'Pause Theme' });
     }
 }
 
@@ -210,26 +272,51 @@ function updateStatus(message) {
     }
 }
 
+function renderProgress() {
+    if (progressMessage) {
+        updateStatus(`${progressMessage} ${formatElapsed(Date.now() - progressStartedAt)}`);
+    }
+}
+
+function startProgress() {
+    stopProgress();
+    progressStartedAt = Date.now();
+    progressTimer = setInterval(renderProgress, 1000);
+}
+
+function setProgress(message) {
+    progressMessage = message;
+    renderProgress();
+}
+
+function stopProgress() {
+    clearInterval(progressTimer);
+    progressTimer = undefined;
+    progressMessage = '';
+}
+
 function updateToolbarButtons() {
     const menu = document.getElementById('extensionsMenu');
     if (!menu || !extension_settings[MODULE]?.enabled) {
         document.getElementById('st_leitmotif_toggle')?.remove();
+        document.getElementById('st_leitmotif_pause')?.remove();
         return;
     }
 
+    let container = document.getElementById('st_leitmotif_wand_container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'st_leitmotif_wand_container';
+        container.className = 'extension_container';
+        menu.append(container);
+    }
     if (!document.getElementById('st_leitmotif_toggle')) {
-        let container = document.getElementById('st_leitmotif_wand_container');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'st_leitmotif_wand_container';
-            container.className = 'extension_container';
-            menu.append(container);
-        }
-        container.append(getMenuButton(
-            'st_leitmotif_toggle',
-            'Generate Theme',
-            handleToolbarClick,
-        ));
+        container.append(getMenuButton('st_leitmotif_toggle', 'Generate Theme', 'fa-music', handleToolbarClick));
+    }
+    if (!document.getElementById('st_leitmotif_pause')) {
+        const pauseButton = getMenuButton('st_leitmotif_pause', 'Pause Theme', 'fa-pause', handlePauseClick);
+        pauseButton.hidden = true;
+        container.append(pauseButton);
     }
     updateToolbar();
 }
@@ -263,9 +350,23 @@ function handleToolbarClick() {
     handleGenerateClick();
 }
 
+function handlePauseClick() {
+    if (!playback.isActive()) {
+        return;
+    }
+    if (playback.isPaused()) {
+        // Inside the tap, as on iOS a resume must be.
+        playback.unlock();
+        playback.resume();
+    } else {
+        playback.pause();
+    }
+}
+
 function reportFailure(error) {
     const detail = error instanceof Error ? error.message : String(error);
     console.error(LOG_TAG, 'Theme generation or playback failed:', error);
+    stopProgress();
     updateStatus(getIdleStatus(Boolean(currentScore)));
     toastr.error(detail, 'Leitmotif', { timeOut: 12000, extendedTimeOut: 2000 });
 }
@@ -277,7 +378,7 @@ async function startPlayback(score) {
         console.warn(LOG_TAG, 'The browser has not allowed audio yet; waiting for a tap to play the theme.');
         pendingPlay = true;
         updateToolbar();
-        updateStatus('Theme ready. Tap Play Theme in the extensions menu to hear it.');
+        updateStatus('Theme ready. Choose Play Theme in the Extensions menu to hear it.');
         return;
     }
     pendingPlay = false;
@@ -316,7 +417,7 @@ async function analyzeCharacter(character) {
         updateBriefPreview(cached);
         return cached;
     }
-    updateStatus(`Analyzing ${character.name}'s musical identity…`);
+    setProgress(`Analyzing ${character.name}'s musical identity…`);
     const prompt = getBriefPrompt(character, { tempoHint });
     for (let attempt = 0; attempt < 2; attempt += 1) {
         const response = await generateRaw({
@@ -345,6 +446,16 @@ async function analyzeCharacter(character) {
     return null;
 }
 
+// The chat's recent messages for the composer, as many as the setting asks.
+function getRecentStory(character) {
+    const context = getContext();
+    return buildStoryExcerpt(context.chat, {
+        count: extension_settings[MODULE].storyMessages,
+        userName: context.name1,
+        characterName: character.name,
+    });
+}
+
 async function handleGenerateClick() {
     if (generating) {
         return;
@@ -353,6 +464,7 @@ async function handleGenerateClick() {
     generating = true;
     pendingPlay = false;
     updateToolbar();
+    startProgress();
 
     try {
         const character = getActiveCharacter();
@@ -365,7 +477,10 @@ async function handleGenerateClick() {
         const bars = getLoopBars(extension_settings[MODULE].lengthSeconds, tempo, meter);
         const loopBeats = bars * METERS[meter];
         const varietySeed = sampleVarietySeed(extension_settings[MODULE].variety);
-        updateStatus(`Generating a theme for ${character.name}…`);
+        const story = getRecentStory(character);
+        setProgress(story
+            ? `Composing ${character.name}'s theme for the current scene…`
+            : `Generating a theme for ${character.name}…`);
         const prompt = getComposerPrompt(character, {
             brief,
             bars,
@@ -373,6 +488,7 @@ async function handleGenerateClick() {
             tempo,
             meter,
             varietySeed,
+            story,
         });
         const parseOptions = {
             loopBeats,
@@ -422,10 +538,12 @@ async function handleGenerateClick() {
 
         currentScore = score;
         $('#st_leitmotif_download').prop('disabled', false);
+        stopProgress();
         await startPlayback(score);
     } catch (error) {
         reportFailure(error);
     } finally {
+        stopProgress();
         generating = false;
         updateToolbar();
     }
@@ -460,9 +578,9 @@ function bindSettings() {
             }
             updateToolbarButtons();
         });
-        $('#st_leitmotif_download').on('click', downloadMidi);
+    $('#st_leitmotif_download').on('click', downloadMidi);
 
-        $('#st_leitmotif_tempo')
+    $('#st_leitmotif_tempo')
         .val(extension_settings[MODULE].tempo)
         .on('input change', function () {
             const tempo = Number(this.value);
@@ -484,6 +602,26 @@ function bindSettings() {
             updateLengthEstimate();
             updateTempoFeedback();
         });
+
+    $('#st_leitmotif_story_messages')
+        .val(extension_settings[MODULE].storyMessages)
+        .on('input change', function () {
+            const count = Number(this.value);
+            extension_settings[MODULE].storyMessages = count;
+            $('#st_leitmotif_story_messages_value').text(getStoryLabel(count));
+            saveSettingsDebounced();
+        });
+    $('#st_leitmotif_story_messages_value').text(getStoryLabel(extension_settings[MODULE].storyMessages));
+
+    $('#st_leitmotif_volume')
+        .val(extension_settings[MODULE].volume)
+        .on('input change', function () {
+            extension_settings[MODULE].volume = Number(this.value);
+            $('#st_leitmotif_volume_value').text(`${extension_settings[MODULE].volume}%`);
+            applyVolume();
+            saveSettingsDebounced();
+        });
+    $('#st_leitmotif_volume_value').text(`${extension_settings[MODULE].volume}%`);
 
     $('#st_leitmotif_variety')
         .val(extension_settings[MODULE].variety)
@@ -508,6 +646,12 @@ function bindSettings() {
 
 jQuery(async () => {
     loadSettings();
+    // Back from another app, a call or a locked screen: pick the theme up again.
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            playback.recover();
+        }
+    });
     try {
         const html = await renderExtensionTemplateAsync(EXT_DIR, 'settings');
         $('#extensions_settings2').append(html);

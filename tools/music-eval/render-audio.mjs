@@ -1,10 +1,11 @@
 // Saves generated themes for listening: each score record from generate.mjs
 // becomes a .mid written by the extension's MIDI export and a .wav rendered by
 // the extension's own playback (shipped samples, drum synth, swing,
-// humanisation, master chain) in an OfflineAudioContext, the loop played twice
-// plus a short release tail. Runs in headless Chromium against a local static
-// server over the repo, one theme at a time. Prints one line per theme with
-// the peak and the duration against two loops.
+// humanisation, track buses with reverb, master chain) in an
+// OfflineAudioContext, the loop played twice plus a short release tail. Runs
+// in headless Chromium against a local static server over the repo, one theme
+// at a time. Prints one line per theme with the peak and the duration against
+// two loops.
 //
 // Usage: node tools/music-eval/render-audio.mjs --pw <folder whose node_modules
 // holds playwright-core> --out <folder> <record.json> [<record.json>...]
@@ -64,6 +65,7 @@ async function renderInPage({ score, sampleRate, tailSeconds }) {
     const players = await playback.loadScorePlayers(window.Soundfont, context, score, {
         sampleUrlBase: new URL('/samples/', location.href).href,
         destination: master,
+        reverb: playback.createReverb(context, master),
         logTag: '[render]',
     });
     const random = playback.createHumanizer();
