@@ -100,7 +100,7 @@ test('a story adds the scene section and rule, keeps the identity, and may allow
     const story = '<message speaker="Vera">Steel rings in the dark.</message>';
     const prompt = getComposerPrompt(character, { ...options, story });
     assert.ok(prompt.includes(`<recent_story>\n${story}\n</recent_story>`));
-    assert.ok(prompt.indexOf('<recent_story>') < prompt.indexOf('<character_profile>'));
+    assert.ok(prompt.indexOf('<recent_story>\n') < prompt.indexOf('<character_profile>'));
     assert.match(prompt, /Scene: <recent_story> holds the latest chat messages/);
     assert.match(prompt, /keep its motif, key centre and signature timbre recognisable/);
     assert.match(prompt, /the scene wins/);
@@ -112,4 +112,15 @@ test('a story adds the scene section and rule, keeps the identity, and may allow
     const withDrums = getComposerPrompt(character, { ...options, brief, story });
     assert.doesNotMatch(withDrums, /you may add a drums track/);
     assert.match(withDrums, /Drums: play the drum cell/);
+});
+
+test('the mood palette is in every prompt, read against the scene when there is one', () => {
+    const plain = getComposerPrompt(character, options);
+    assert.match(plain, /<mood_palette>\n- sad, grief, loss, regret: acoustic_grand_piano/);
+    assert.match(plain, /Find the one or two rows that fit the character,/);
+    assert.match(plain, /nudges, not limits: the brief's named timbres and the motif's instrument still lead/);
+    assert.ok(plain.indexOf('<mood_palette>') < plain.indexOf('<music_brief>'));
+
+    const withStory = getComposerPrompt(character, { ...options, story: '<message speaker="Vera">She smiles.</message>' });
+    assert.match(withStory, /fit the scene in <recent_story> and the character/);
 });
