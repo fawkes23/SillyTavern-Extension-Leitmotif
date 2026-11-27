@@ -1,245 +1,171 @@
-// The mood palette: common associations of a mood with instruments, harmony,
-// rhythm and style, as starting points for the composer, never as limits.
-// Each mood names the story cues that point to it and comes in flavours
-// tagged by era (classic, folk, modern, electronic, contrast), so a
-// present-day scene can sound like lo-fi or trap and a fantasy one like a
-// film score. Modern sounds are approximated on the General MIDI palette the
-// extension ships (an 808 is a synth bass with long low notes, a Rhodes the
-// electric piano, a supersaw the sawtooth lead). Instrument names are names
-// from score.mjs INSTRUMENTS.
+// The mood palette: for each emotion, the story cues that point to it and a
+// few flavours of music that carry it (instruments, harmony, rhythm, styles),
+// tagged by era: classic, folk, modern, electronic, or contrast (music played
+// against the feeling). The setting palette adds the colour of a place or
+// time. Both are starting points for the composer, never limits. Modern
+// sounds are approximated on the General MIDI palette the extension ships
+// (an 808 is a synth bass with long low notes, a Rhodes the electric piano,
+// a supersaw the sawtooth lead); instrument names come from score.mjs
+// INSTRUMENTS.
 
 export const PALETTE_ERAS = Object.freeze(['classic', 'folk', 'modern', 'electronic', 'contrast']);
 
-const flavour = (name, era, instruments, harmony, rhythm, styles) => ({ name, era, instruments, harmony, rhythm, styles });
+const flavour = (era, instruments, harmony, rhythm, styles) => ({ era, instruments, harmony, rhythm, styles });
+const emotion = (name, cues, ...flavours) => ({ emotion: name, cues, flavours });
 
 export const MOOD_PALETTE = Object.freeze([
-    {
-        mood: 'sadness',
-        cues: 'a death, a farewell, tears, regret, loneliness',
-        flavours: [
-            flavour('quiet grief', 'classic', ['acoustic_grand_piano', 'cello', 'string_ensemble_1', 'english_horn'],
-                'natural minor, a falling bass line, slow chord changes', 'sparse, long phrases, soft', 'film elegy, Romantic chamber music'),
-            flavour('numb, hollow', 'modern', ['electric_piano_1', 'pad_8_sweep', 'fretless_bass', 'voice_oohs'],
-                'minor 9th and suspended chords that never quite resolve', 'slow half-time, a lot of space', 'lo-fi, slowcore, ambient pop'),
-            flavour('aching, cathartic', 'modern', ['electric_guitar_clean', 'acoustic_grand_piano', 'string_ensemble_1', 'synth_strings_1'],
-                'i-VI-III-VII, voicings opening upward as it grows', 'one repeated figure gaining layers and loudness', 'post-rock, indie film score'),
-        ],
-    },
-    {
-        mood: 'melancholy, nostalgia, bittersweet',
-        cues: 'memories, home, an old photo, rain, autumn, a reunion',
-        flavours: [
-            flavour('wistful', 'folk', ['accordion', 'acoustic_guitar_nylon', 'clarinet', 'harmonica'],
-                'a minor melody over major chords, a borrowed iv', 'a slow waltz or walking pulse', 'chanson, folk ballad'),
-            flavour('hazy memory', 'modern', ['electric_piano_1', 'vibraphone', 'synth_bass_1', 'pad_2_warm'],
-                'major 7ths and 9ths, IV-iii-ii-I', 'laid back, lazily swung, a little behind the beat', 'lo-fi hip hop, city pop, chillhop'),
-            flavour('faded and bright', 'modern', ['electric_guitar_clean', 'pad_7_halo', 'glockenspiel', 'voice_oohs'],
-                'major with suspended 2nds, chords blurred into each other', 'slow, washed, few hard attacks', 'dream pop, shoegaze'),
-        ],
-    },
-    {
-        mood: 'romance',
-        cues: 'flirting, a confession, a kiss, a date, longing',
-        flavours: [
-            flavour('tender', 'classic', ['violin', 'acoustic_guitar_nylon', 'flute', 'orchestral_harp', 'string_ensemble_1'],
-                'major 7ths, lydian colour', 'gentle arpeggios, slow harmonic rhythm', 'film love theme, bossa nova'),
-            flavour('slow burn', 'modern', ['electric_piano_1', 'fretless_bass', 'voice_oohs', 'pad_2_warm'],
-                'minor 9ths, ii-V that never lands', 'slow, behind the beat, a soft groove', 'R&B, neo-soul'),
-            flavour('giddy crush', 'modern', ['electric_piano_2', 'marimba', 'glockenspiel', 'electric_bass_finger'],
-                'bright major, pentatonic hooks, added 6ths', 'bouncy, syncopated', 'bedroom pop, city pop, J-pop'),
-        ],
-    },
-    {
-        mood: 'desire, sultry, steamy',
-        cues: 'seduction, a dim bar, heat, temptation, a dangerous attraction',
-        flavours: [
-            flavour('noir', 'classic', ['tenor_sax', 'muted_trumpet', 'acoustic_bass', 'acoustic_grand_piano'],
-                'minor 7ths, blue notes, chromatic slides', 'a slow swing', 'noir jazz, torch song'),
-            flavour('late night', 'modern', ['alto_sax', 'electric_piano_1', 'synth_bass_1', 'pad_3_polysynth'],
-                'dorian minor 9ths', 'a slow half-time groove', '80s slow jam, synthwave sax, contemporary R&B'),
-            flavour('dark allure', 'modern', ['synth_bass_2', 'pad_6_metallic', 'lead_6_voice', 'electric_piano_2'],
-                'phrygian, low close voicings', 'slow, heavy, sparse', 'dark pop, trip-hop'),
-        ],
-    },
-    {
-        mood: 'cool, confident, swagger',
-        cues: 'a boast, a plan coming together, style, sizing up a rival',
-        flavours: [
-            flavour('cool jazz', 'classic', ['vibraphone', 'muted_trumpet', 'acoustic_bass', 'electric_guitar_jazz'],
-                'dorian, 9th and 13th chords', 'a light swing over a walking bass', 'cool jazz, 60s spy film'),
-            flavour('groove', 'modern', ['electric_guitar_clean', 'slap_bass_1', 'clavinet', 'brass_section'],
-                'dominant 9ths, one-chord vamps', 'tight syncopated sixteenths', 'funk, nu-disco'),
-            flavour('swagger', 'modern', ['synth_bass_1', 'electric_piano_2', 'lead_1_square', 'pad_3_polysynth'],
-                'minor, a two-chord loop', 'half-time, long low bass notes like an 808, sixteenth-note hat rolls when drums play', 'trap, phonk'),
-        ],
-    },
-    {
-        mood: 'tension, suspense',
-        cues: 'sneaking, a secret, being watched, a countdown, a lie about to unravel',
-        flavours: [
-            flavour('thriller', 'classic', ['tremolo_strings', 'pizzicato_strings', 'contrabass', 'timpani', 'celesta'],
-                'minor with diminished chords, chromatic lines, pedal tones', 'a repeated low ostinato, a rising pulse', 'classic thriller score'),
-            flavour('pulse', 'electronic', ['synth_bass_2', 'lead_2_sawtooth', 'pad_8_sweep', 'fx_4_atmosphere'],
-                'one held minor chord, the register climbing', 'a steady eighth-note pulse that grows denser', 'modern action-thriller score, darksynth'),
-            flavour('caper', 'modern', ['electric_bass_finger', 'electric_guitar_muted', 'brass_section', 'vibraphone'],
-                'minor blues', 'tight muted riffs', 'heist film, spy funk'),
-        ],
-    },
-    {
-        mood: 'dread, horror, the uncanny',
-        cues: 'the dark, a monster, a curse, something wrong with a familiar place',
-        flavours: [
-            flavour('gothic', 'classic', ['church_organ', 'choir_aahs', 'contrabass', 'tubular_bells'],
-                'phrygian or locrian, tritones, clusters', 'very slow, long silences, sudden accents', 'gothic horror score'),
-            flavour('creepy innocence', 'contrast', ['music_box', 'celesta', 'glockenspiel', 'pad_6_metallic'],
-                'a childlike major tune over a minor or wrong-note drone', 'slow and slightly uneven', 'horror lullaby'),
-            flavour('modern dread', 'electronic', ['fx_7_echoes', 'pad_8_sweep', 'synth_bass_2', 'reverse_cymbal'],
-                'drones with no clear key, low clusters', 'almost no pulse, slow swells', 'dark ambient, witch house'),
-        ],
-    },
-    {
-        mood: 'combat, chase, danger',
-        cues: 'a fight, weapons drawn, running, an ambush, a race against time',
-        flavours: [
-            flavour('epic', 'classic', ['brass_section', 'french_horn', 'string_ensemble_1', 'timpani', 'taiko_drum'],
-                'minor or phrygian, power chords (root and fifth)', 'driving eighths, hard accents', 'epic orchestral'),
-            flavour('riff', 'modern', ['distortion_guitar', 'overdriven_guitar', 'electric_bass_pick', 'rock_organ'],
-                'minor, power chords, chromatic riffs', 'palm-muted eighths, heavy downbeats', 'metal, hard rock'),
-            flavour('breakneck', 'electronic', ['synth_bass_2', 'lead_2_sawtooth', 'lead_1_square', 'pad_3_polysynth'],
-                'minor, short repeated stabs', 'a fast sixteenth pulse, broken-beat drums when drums play', 'drum and bass, cyberpunk action'),
-        ],
-    },
-    {
-        mood: 'triumph, heroism, resolve',
-        cues: 'victory, a rescue, a vow, standing up to someone',
-        flavours: [
-            flavour('fanfare', 'classic', ['french_horn', 'trumpet', 'brass_section', 'string_ensemble_1', 'timpani'],
-                'major or mixolydian, rising fourths and fifths, bVII-IV-I', 'march-like, broad, loud', 'heroic film score'),
-            flavour('anthem', 'modern', ['electric_guitar_clean', 'synth_strings_1', 'acoustic_grand_piano', 'lead_2_sawtooth'],
-                'I-V-vi-IV, a big melody doubled in octaves', 'a four-on-the-floor build', 'stadium pop, EDM anthem'),
-            flavour('quiet resolve', 'folk', ['cello', 'acoustic_guitar_steel', 'acoustic_grand_piano', 'french_horn'],
-                'major with suspended chords that resolve late', 'a slow steady pulse', 'indie folk, modern film score'),
-        ],
-    },
-    {
-        mood: 'joy, playfulness, mischief',
-        cues: 'a joke, a game, a party, teasing, a prank',
-        flavours: [
-            flavour('cartoon', 'classic', ['pizzicato_strings', 'clarinet', 'xylophone', 'bassoon'],
-                'major, quick leaps, chromatic grace notes', 'bouncy staccato', 'cartoon score, ragtime'),
-            flavour('bright pop', 'modern', ['electric_piano_2', 'synth_bass_1', 'glockenspiel', 'lead_1_square'],
-                'major, pentatonic hooks, bright 7ths', 'upbeat, syncopated, sparkly', 'K-pop, city pop, hyperpop'),
-            flavour('sunny', 'modern', ['steel_drums', 'marimba', 'acoustic_guitar_steel', 'electric_bass_finger'],
-                'major, I-IV-V', 'off-beat accents in a 3+3+2 sixteenth pattern', 'afrobeats, tropical house'),
-        ],
-    },
-    {
-        mood: 'wonder, magic, the fantastic',
-        cues: 'a spell, the stars, a discovery, a first sight of something vast',
-        flavours: [
-            flavour('fairy tale', 'classic', ['celesta', 'orchestral_harp', 'flute', 'glockenspiel', 'string_ensemble_1'],
-                'lydian (major with a raised fourth)', 'arpeggiated, floating, light', 'fantasy film score'),
-            flavour('cosmic', 'electronic', ['pad_7_halo', 'fx_3_crystal', 'synth_strings_2', 'lead_7_fifths'],
-                'slow-moving major chords with added 9ths, lydian', 'slow, spacious arpeggios', 'ambient electronic, space synth'),
-            flavour('cozy whimsy', 'modern', ['kalimba', 'music_box', 'pizzicato_strings', 'ocarina'],
-                'major pentatonic', 'light, skipping', 'cozy game music, indie game score'),
-        ],
-    },
-    {
-        mood: 'calm, peace, rest',
-        cues: 'a campfire, sleep, a garden, safety after danger',
-        flavours: [
-            flavour('pastoral', 'classic', ['flute', 'orchestral_harp', 'acoustic_guitar_nylon', 'string_ensemble_1'],
-                'major pentatonic, open fifths, few chord changes', 'slow, open', 'pastoral'),
-            flavour('lo-fi', 'modern', ['electric_piano_1', 'acoustic_guitar_nylon', 'fretless_bass', 'vibraphone'],
-                'major 7ths, ii-V-I', 'a lazy swing, soft', 'lo-fi hip hop, chillhop'),
-            flavour('drift', 'electronic', ['pad_2_warm', 'kalimba', 'pad_1_new_age', 'celesta'],
-                'one or two chords, no tension', 'almost static', 'ambient, new age'),
-        ],
-    },
-    {
-        mood: 'mystery, intrigue',
-        cues: 'a clue, a stranger, a locked door, rumours, an old map',
-        flavours: [
-            flavour('detective', 'classic', ['vibraphone', 'acoustic_bass', 'clarinet', 'muted_trumpet'],
-                'minor, chromatic walking lines', 'a slow swing', 'noir, detective film'),
-            flavour('enigmatic', 'modern', ['electric_piano_2', 'synth_bass_2', 'pad_8_sweep', 'fx_4_atmosphere'],
-                'dorian or whole-tone colour, suspended chords', 'unhurried, unexpected rests', 'trip-hop, ambient jazz'),
-            flavour('ancient secret', 'folk', ['pan_flute', 'dulcimer', 'orchestral_harp', 'choir_aahs'],
-                'modal drones, dorian', 'free and slow', 'ancient-ruins score'),
-        ],
-    },
-    {
-        mood: 'anger, rage, defiance',
-        cues: 'shouting, betrayal, a grudge, rebellion',
-        flavours: [
-            flavour('fury', 'classic', ['string_ensemble_1', 'brass_section', 'timpani', 'contrabass'],
-                'minor and diminished, hammered repeated notes', 'accented, relentless', 'dramatic orchestral'),
-            flavour('punk', 'modern', ['distortion_guitar', 'electric_bass_pick', 'overdriven_guitar'],
-                'power chords, i-bVI-bVII', 'fast straight eighths', 'punk, emo'),
-            flavour('industrial', 'electronic', ['synth_bass_2', 'lead_2_sawtooth', 'pad_6_metallic', 'orchestra_hit'],
-                'minor, single-note riffs, metallic stabs', 'mechanical sixteenths, heavy downbeats', 'industrial, darksynth'),
-        ],
-    },
-    {
-        mood: 'sacred, solemn, ceremony',
-        cues: 'a funeral, a temple, an oath, a coronation',
-        flavours: [
-            flavour('hymn', 'classic', ['church_organ', 'choir_aahs', 'string_ensemble_2', 'tubular_bells'],
-                'dorian or aeolian, plagal (IV-I) cadences', 'slow, stately', 'chorale'),
-            flavour('processional', 'classic', ['french_horn', 'brass_section', 'timpani', 'choir_aahs'],
-                'major or mixolydian, broad suspensions', 'a slow march', 'coronation music'),
-            flavour('still devotion', 'modern', ['voice_oohs', 'pad_4_choir', 'acoustic_grand_piano', 'cello'],
-                'slowly changing modal chords, much repetition', 'very slow', 'holy minimalism, ambient choral'),
-        ],
-    },
-    {
-        mood: 'future, technology',
-        cues: 'machines, neon, a city at night, a spaceship, a hacker',
-        flavours: [
-            flavour('retro-future', 'electronic', ['lead_2_sawtooth', 'synth_bass_1', 'pad_3_polysynth', 'electric_piano_2'],
-                'minor with suspended chords, arpeggios', 'a steady sixteenth pulse', 'synthwave'),
-            flavour('cold machine', 'electronic', ['lead_1_square', 'synth_bass_2', 'fx_8_scifi', 'pad_6_metallic'],
-                'minor, short repeated cells', 'mechanical, exact', 'techno, glitch'),
-            flavour('8-bit', 'electronic', ['lead_1_square', 'lead_3_calliope', 'synth_bass_1'],
-                'fast major or minor arpeggios', 'quick and busy', 'chiptune'),
-        ],
-    },
-    {
-        mood: 'tavern, adventure, the old world',
-        cues: 'an inn, a journey, a market, a quest, a feast',
-        flavours: [
-            flavour('folk dance', 'folk', ['fiddle', 'recorder', 'accordion', 'bagpipe', 'dulcimer'],
-                'dorian or mixolydian over drones', 'a lively 3/4 dance or a jig-like lilt', 'celtic folk'),
-            flavour('court', 'classic', ['harpsichord', 'recorder', 'string_ensemble_1', 'orchestral_harp'],
-                'major, baroque sequences', 'a courtly dance', 'baroque, renaissance dance'),
-            flavour('stomp', 'modern', ['acoustic_guitar_steel', 'banjo', 'fiddle', 'acoustic_bass'],
-                'mixolydian, shouted unison hooks', 'a stomping four', 'modern folk, folk rock'),
-        ],
-    },
-    {
-        mood: 'frontier, wilderness, the open road',
-        cues: 'a desert, a horse, a long drive, open sky, exile',
-        flavours: [
-            flavour('western', 'classic', ['acoustic_guitar_steel', 'harmonica', 'trumpet', 'whistle'],
-                'minor or mixolydian, wide leaps', 'loping', 'spaghetti western'),
-            flavour('americana', 'folk', ['acoustic_guitar_steel', 'banjo', 'fiddle', 'acoustic_bass'],
-                'I-IV-V', 'a train beat', 'bluegrass, country'),
-            flavour('night drive', 'modern', ['electric_guitar_clean', 'synth_bass_1', 'pad_2_warm', 'electric_piano_1'],
-                'major 7ths', 'steady cruising eighths', 'desert rock, driving synth-pop'),
-        ],
-    },
+    emotion('Acceptance', 'letting go, making peace, quiet after a long struggle',
+        flavour('classic', ['cello', 'acoustic_guitar_nylon', 'string_ensemble_1'], 'a minor phrase settling into its relative major, plagal IV-I', 'slow, steady, unforced', 'chamber elegy turning warm'),
+        flavour('modern', ['acoustic_grand_piano', 'pad_2_warm', 'electric_guitar_clean'], 'suspended chords settling into major', 'a gentle repeated arpeggio', 'ambient piano, indie film score')),
+    emotion('Affection', 'hugs, pet names, warm teasing, small acts of care',
+        flavour('folk', ['acoustic_guitar_nylon', 'flute', 'clarinet'], 'major 6ths and 7ths', 'lilting, medium-slow', 'bossa nova, folk lullaby'),
+        flavour('modern', ['electric_piano_1', 'vibraphone', 'fretless_bass'], 'major 9ths', 'a soft swung groove', 'lo-fi, bedroom pop')),
+    emotion('Aggression', 'threats, shoving, a fight starting, intimidation',
+        flavour('classic', ['brass_section', 'timpani', 'string_ensemble_1', 'contrabass'], 'minor, low hammered repeated notes, tritone leaps', 'accented driving eighths', 'action orchestral'),
+        flavour('modern', ['distortion_guitar', 'electric_bass_pick', 'synth_bass_2'], 'power chords, chromatic riffs', 'heavy palm-muted downbeats', 'metal, drill')),
+    emotion('Ambivalence', 'torn, mixed feelings, wanting and not wanting',
+        flavour('classic', ['clarinet', 'viola', 'orchestral_harp'], 'chords that hover between major and minor (the third left out, or both colours in turn)', 'phrases that stop halfway', 'impressionist chamber music'),
+        flavour('modern', ['electric_piano_2', 'guitar_harmonics', 'pad_3_polysynth'], 'two chords alternating, neither one home', 'uneven, a beat dropped now and then', 'indie, art pop')),
+    emotion('Apathy', 'indifference, shrugging, flat replies, nothing matters',
+        flavour('classic', ['string_ensemble_2', 'contrabass', 'oboe'], 'one static chord, no cadence', 'flat dynamics, very little movement', 'minimalism'),
+        flavour('modern', ['electric_piano_1', 'synth_bass_1', 'drawbar_organ'], 'a two-chord loop that never changes', 'deadpan, behind the beat', 'lo-fi, slowed vaporwave')),
+    emotion('Anxiety', 'racing thoughts, waiting for news, a deadline, what-ifs',
+        flavour('classic', ['tremolo_strings', 'pizzicato_strings', 'clarinet'], 'minor, chromatic lines, unresolved diminished chords', 'fluttering fast inner parts over a slow bass', 'thriller score'),
+        flavour('electronic', ['synth_bass_2', 'lead_1_square', 'pad_8_sweep'], 'one held chord, notes crowding together', 'rapid clock-like sixteenths, uneven accents', 'glitch, IDM, darksynth')),
+    emotion('Boredom', 'waiting, yawning, routine, a long dull day',
+        flavour('classic', ['bassoon', 'harpsichord', 'pizzicato_strings'], 'major, the same cadence again and again', 'plodding, metronomic', 'mock baroque exercise'),
+        flavour('modern', ['electric_piano_1', 'synth_bass_1', 'kalimba'], 'a two-chord loop', 'a lazy swing that deliberately never changes', 'elevator music, lo-fi')),
+    emotion('Compassion', 'comforting someone, kindness, helping a stranger',
+        flavour('classic', ['string_ensemble_1', 'french_horn', 'cello'], 'major with gentle suspensions resolving, IV-I', 'warm, slow, legato', 'tender film theme'),
+        flavour('modern', ['acoustic_grand_piano', 'acoustic_guitar_steel', 'voice_oohs'], 'added 9ths, a soft I-V-vi-IV', 'a slow steady pulse', 'indie folk, piano ballad')),
+    emotion('Confusion', 'lost, "what just happened", contradictions, a strange place',
+        flavour('classic', ['celesta', 'clarinet', 'pizzicato_strings'], 'whole-tone scales, chords sliding by a semitone', 'irregular phrase lengths, rests in odd places', 'impressionist, absurdist cartoon'),
+        flavour('electronic', ['electric_piano_2', 'guitar_harmonics', 'pad_8_sweep', 'fx_3_crystal'], 'no clear key, suspended chords', 'stuttering, displaced off-beats', 'glitch pop, experimental electronic')),
+    emotion('Contempt', 'sneering, mockery, looking down on someone',
+        flavour('classic', ['harpsichord', 'bassoon', 'muted_trumpet'], 'minor with sardonic grace notes and fussy chromatic turns', 'dry staccato, mock-dignified', "baroque pastiche, a villain's minuet"),
+        flavour('modern', ['synth_bass_2', 'electric_piano_2', 'lead_8_bass__lead'], 'phrygian, a cold two-note bass', 'slow, sparse, cold', 'villain trap, dark pop')),
+    emotion('Depression', 'hopelessness, heaviness, not getting up, numbness',
+        flavour('classic', ['cello', 'contrabass', 'english_horn'], 'low aeolian, very slow descending lines', 'barely moving, very soft', 'dark chamber music'),
+        flavour('modern', ['electric_piano_1', 'pad_8_sweep', 'fretless_bass'], 'minor 9ths that never resolve', 'slow half-time, a lot of space', 'slowcore, ambient')),
+    emotion('Doubt', 'hesitation, second-guessing, "are you sure?"',
+        flavour('classic', ['oboe', 'clarinet', 'string_ensemble_2'], 'melodies ending on the 2nd or 4th, questions left unanswered', 'phrases that pause and restart', 'chamber music'),
+        flavour('modern', ['acoustic_grand_piano', 'electric_guitar_clean', 'pad_1_new_age'], 'a sus4 chord that rarely resolves', 'hesitant, notes placed just after the beat', 'indie piano, ambient')),
+    emotion('Ecstasy', 'rapture, overwhelming bliss, a transcendent moment',
+        flavour('classic', ['choir_aahs', 'string_ensemble_1', 'orchestral_harp', 'church_organ'], 'lydian, a soaring high melody, rich added notes', 'swelling, register rising', 'rapturous choral finale'),
+        flavour('electronic', ['lead_2_sawtooth', 'pad_3_polysynth', 'synth_bass_1', 'voice_oohs'], 'major or lydian, building to a peak', 'a four-on-the-floor pulse and a rising build', 'trance, euphoric EDM')),
+    emotion('Empathy', 'listening, "I understand", feeling what someone feels',
+        flavour('classic', ['cello', 'violin', 'orchestral_harp'], 'warm thirds and sixths', 'call and response between two voices, conversational', 'chamber duet'),
+        flavour('modern', ['acoustic_guitar_nylon', 'electric_piano_1', 'voice_oohs'], 'major 7ths, ii-IV-I', 'a soft steady pulse', 'singer-songwriter, lo-fi')),
+    emotion('Envy', 'jealousy, comparison, coveting, "why them?"',
+        flavour('classic', ['accordion', 'violin', 'acoustic_grand_piano'], 'minor, slinking chromatic lines', 'a habanera 3+3+2 rhythm', 'tango'),
+        flavour('modern', ['synth_bass_2', 'electric_piano_2', 'alto_sax'], 'dorian with a sour flat 9', 'a slinking half-time groove', 'dark pop, trip-hop')),
+    emotion('Embarrassment', 'blushing, a social slip, being caught, awkward silence',
+        flavour('classic', ['bassoon', 'tuba', 'pizzicato_strings', 'clarinet'], 'major with wrong-note grace notes, a deflating downward slide', 'stumbling, a hiccup off the beat', 'comedic film score'),
+        flavour('modern', ['kalimba', 'glockenspiel', 'synth_bass_1', 'lead_1_square'], 'cute major, a sudden stop', 'quirky start-stop', 'quirky indie, slice-of-life anime')),
+    emotion('Euphoria', 'winning, a celebration, an adrenaline high',
+        flavour('classic', ['brass_section', 'string_ensemble_1', 'glockenspiel', 'timpani'], 'bright major, rising sequences, a key change up a step', 'fast and bright', 'festive finale'),
+        flavour('modern', ['lead_2_sawtooth', 'electric_piano_2', 'synth_bass_1', 'glockenspiel'], 'major, I-V-vi-IV, big hooks', 'fast, four-on-the-floor or bouncy', 'euphoric house, hyperpop, K-pop')),
+    emotion('Forgiveness', 'an apology accepted, reconciliation, "I forgive you"',
+        flavour('classic', ['string_ensemble_1', 'french_horn', 'choir_aahs'], 'a minor phrase answered in major, plagal IV-I', 'slow, broadening', 'sacred music, reconciliation theme'),
+        flavour('modern', ['acoustic_grand_piano', 'acoustic_guitar_steel', 'pad_2_warm'], 'suspended chords resolving late', 'a gentle build', 'indie folk, piano ballad')),
+    emotion('Frustration', 'failing again, being stuck, an argument going in circles',
+        flavour('classic', ['string_ensemble_1', 'bassoon', 'timpani'], 'a phrase that climbs and falls back, again and again', 'stop-start, accented', 'agitated chamber music'),
+        flavour('modern', ['overdriven_guitar', 'electric_bass_pick', 'synth_bass_2'], 'a minor riff that repeats and stalls', 'jagged off-beat accents, odd groupings', 'math rock, grunge')),
+    emotion('Gratitude', 'thanks, a gift, being saved, kindness returned',
+        flavour('classic', ['string_ensemble_1', 'flute', 'orchestral_harp', 'french_horn'], 'major, warm IV-I, gentle suspensions', 'flowing, moderate', 'hymn-like, pastoral'),
+        flavour('modern', ['acoustic_guitar_steel', 'acoustic_grand_piano', 'glockenspiel'], 'major add9, I-IV-vi-V', 'a warm steady strum', 'indie folk, gospel-tinged pop')),
+    emotion('Grief', 'a death, mourning, a funeral, an empty place at the table',
+        flavour('classic', ['cello', 'string_ensemble_1', 'english_horn', 'acoustic_grand_piano'], 'aeolian, a falling bass line, slow chord changes', 'sparse, long phrases, soft', 'elegy'),
+        flavour('modern', ['electric_guitar_clean', 'string_ensemble_1', 'acoustic_grand_piano'], 'i-VI-III-VII, opening upward as it grows', 'one figure gaining layers and loudness', 'post-rock')),
+    emotion('Guilt', 'hiding something, "it\'s my fault", avoiding eyes',
+        flavour('classic', ['clarinet', 'viola', 'contrabass'], 'minor with one dissonant note that keeps returning', 'slow, heavy, recurring', 'psychological drama score'),
+        flavour('modern', ['electric_piano_1', 'synth_bass_2', 'pad_8_sweep'], 'minor with an unresolved flat 9', 'a slow nagging repeated figure', 'trip-hop, ambient')),
+    emotion('Hatred', 'loathing, vengeance, cold enmity',
+        flavour('classic', ['contrabass', 'brass_section', 'timpani', 'church_organ'], 'locrian or phrygian, tritones, low clusters', 'slow, heavy, menacing', 'dark orchestral'),
+        flavour('modern', ['distortion_guitar', 'synth_bass_2', 'pad_6_metallic'], 'low minor riffs, tritones', 'slow crushing downbeats', 'doom metal, industrial')),
+    emotion('Hope', 'a plan, dawn, a second chance, good news',
+        flavour('classic', ['french_horn', 'string_ensemble_1', 'flute', 'orchestral_harp'], 'major, a rising melody, IV-V-vi', 'a gradual build, register rising', 'uplifting film score'),
+        flavour('modern', ['acoustic_grand_piano', 'electric_guitar_clean', 'synth_strings_1'], 'I-V-vi-IV, suspended chords opening up', 'steady repeated piano eighths, building', 'indie anthem, post-rock crescendo')),
+    emotion('Horror', 'a monster, gore, a scream, something impossible',
+        flavour('classic', ['tremolo_strings', 'contrabass', 'church_organ', 'choir_aahs'], 'clusters and tritones, no key', 'silence broken by sudden stabs', 'horror score'),
+        flavour('contrast', ['music_box', 'celesta', 'glockenspiel'], 'a childlike tune slightly out of key over a low drone', 'slow and uneven', 'horror lullaby'),
+        flavour('electronic', ['fx_7_echoes', 'synth_bass_2', 'reverse_cymbal', 'pad_6_metallic'], 'drones with no key', 'swells with no pulse', 'dark ambient')),
+    emotion('Hostility', 'a cold standoff, glares, an enemy camp',
+        flavour('classic', ['brass_section', 'timpani', 'contrabass', 'tuba'], 'minor, low brass, militant dotted rhythms', 'clipped, march-like', 'war film score'),
+        flavour('modern', ['synth_bass_2', 'lead_8_bass__lead', 'electric_guitar_muted'], 'phrygian, a two-note menace', 'slow tense half-time', 'drill, darksynth')),
+    emotion('Homesickness', 'missing home, letters, a foreign city, family far away',
+        flavour('folk', ['accordion', 'harmonica', 'fiddle', 'acoustic_guitar_nylon'], 'a major folk tune with a minor turn, a borrowed iv', 'a slow waltz', 'folk ballad, chanson'),
+        flavour('modern', ['electric_piano_1', 'acoustic_guitar_steel', 'pad_2_warm'], 'major 7ths, IV-iii-ii-I', 'laid back', 'lo-fi, city pop')),
+    emotion('Hunger', 'starving, craving, a feast smelled from afar, a predator\'s appetite',
+        flavour('classic', ['bassoon', 'contrabass', 'clarinet'], 'a low chromatic line that keeps reaching upward, unresolved', 'prowling, restless', 'predatory or comic film score'),
+        flavour('modern', ['synth_bass_1', 'electric_piano_2', 'alto_sax'], 'dorian, a hook that keeps reaching', 'a restless groove pushing ahead of the beat', 'funk, dark R&B')),
+    emotion('Hysteria', 'screaming, panic, laughter out of control, chaos',
+        flavour('classic', ['piccolo', 'xylophone', 'string_ensemble_1', 'timpani'], 'chromatic runs, chords shifting fast', 'frantic, accelerating, too many notes', 'manic cartoon or horror score'),
+        flavour('contrast', ['lead_3_calliope', 'music_box', 'accordion'], 'a carnival major gone wrong', 'a waltz that keeps speeding up', 'dark carnival'),
+        flavour('electronic', ['lead_1_square', 'synth_bass_2', 'distortion_guitar'], 'near atonal, glitches', 'breakneck sixteenths', 'breakcore, hyperpop')),
+    emotion('Interest', 'curiosity, a new clue, leaning in, "tell me more"',
+        flavour('classic', ['pizzicato_strings', 'flute', 'clarinet', 'celesta'], 'major or lydian, questioning rising phrases', 'light, tiptoeing', 'curious film cue'),
+        flavour('modern', ['marimba', 'electric_piano_2', 'synth_bass_1', 'kalimba'], 'dorian, a small hook that keeps changing', 'a light syncopated groove', 'indie electronic, exploration game music')),
+    emotion('Loneliness', 'alone at night, an empty room, no one answers',
+        flavour('classic', ['oboe', 'acoustic_grand_piano', 'cello'], 'a minor melody with almost no accompaniment', 'very sparse, wide spacing', 'solo nocturne'),
+        flavour('modern', ['electric_guitar_clean', 'electric_piano_1', 'pad_7_halo'], 'major 7ths inside a minor key, distant', 'slow and empty', 'dream pop, sadcore')),
+    emotion('Love', 'devotion, "I love you", a wedding, longing',
+        flavour('classic', ['violin', 'string_ensemble_1', 'french_horn', 'orchestral_harp'], 'major, a wide-leaping melody, romantic suspensions', 'broad, swelling', 'romantic film theme'),
+        flavour('modern', ['electric_piano_1', 'fretless_bass', 'voice_oohs', 'alto_sax'], 'major 9ths, ii-V-I', 'a slow behind-the-beat groove', 'R&B, neo-soul, soul ballad')),
+    emotion('Paranoia', 'being followed, trusting no one, whispers',
+        flavour('classic', ['pizzicato_strings', 'contrabass', 'celesta', 'tremolo_strings'], 'chromatic, an ostinato that keeps shifting by a semitone', 'nervous, off-kilter', 'spy thriller'),
+        flavour('electronic', ['synth_bass_2', 'lead_1_square', 'fx_4_atmosphere'], 'minor, a pulsing note with clashes now and then', 'ticking sixteenths, displaced accents', 'minimal techno, darksynth')),
+    emotion('Pity', 'feeling sorry for someone, a sad sight, a wounded creature',
+        flavour('classic', ['violin', 'oboe', 'acoustic_grand_piano'], 'minor with a sighing two-note falling figure', 'slow, soft', 'sentimental chamber music'),
+        flavour('modern', ['acoustic_guitar_nylon', 'music_box', 'cello'], 'simple minor', 'slow', 'indie film score')),
+    emotion('Pleasure', 'indulgence, good food, a warm bath, sensual delight',
+        flavour('classic', ['flute', 'orchestral_harp', 'string_ensemble_1'], 'major 7ths, lydian', 'lazy and flowing', 'impressionist'),
+        flavour('modern', ['electric_piano_1', 'alto_sax', 'fretless_bass', 'vibraphone'], 'major 9ths', 'a slow sensual groove', 'smooth jazz, lounge, bossa nova')),
+    emotion('Pride', 'an achievement, standing tall, a parade, a parent\'s pride',
+        flavour('classic', ['brass_section', 'trumpet', 'timpani', 'string_ensemble_1'], 'major, a broad melody, bVII-IV-I', 'a stately dotted march', 'processional, heroic score'),
+        flavour('modern', ['electric_guitar_clean', 'synth_strings_1', 'brass_section', 'slap_bass_1'], 'major or mixolydian, a big hook', 'a strutting groove', 'funk, stadium pop, hip-hop anthem')),
+    emotion('Rage', 'screaming fury, destruction, losing control',
+        flavour('classic', ['brass_section', 'timpani', 'string_ensemble_1', 'taiko_drum'], 'minor, hammered repeated notes, clusters at the peak', 'relentless, accented', 'dramatic orchestral'),
+        flavour('modern', ['distortion_guitar', 'overdriven_guitar', 'electric_bass_pick', 'rock_organ'], 'power chords, chromatic riffs', 'fast and heavy', 'metal, punk'),
+        flavour('electronic', ['synth_bass_2', 'lead_2_sawtooth', 'orchestra_hit'], 'minor, metallic stabs', 'mechanical sixteenths, heavy downbeats', 'industrial')),
+    emotion('Regret', '"if only", looking back, a missed chance',
+        flavour('classic', ['cello', 'english_horn', 'acoustic_grand_piano'], 'minor with a remembered major chord, falling lines', 'slow, rubato-like', 'elegy'),
+        flavour('folk', ['acoustic_guitar_steel', 'harmonica', 'electric_piano_1'], 'major with a borrowed iv, 7th chords', 'slow', 'Americana, folk, lo-fi')),
+    emotion('Remorse', 'a deep apology, confessing harm done, kneeling',
+        flavour('classic', ['cello', 'choir_aahs', 'church_organ'], 'aeolian over a descending chromatic lament bass', 'very slow and heavy', 'lament, requiem'),
+        flavour('modern', ['acoustic_grand_piano', 'string_ensemble_1', 'voice_oohs'], 'simple repeated minor', 'slow', 'piano ballad, ambient')),
+    emotion('Shame', 'humiliation, hiding, being exposed',
+        flavour('classic', ['viola', 'bassoon', 'contrabass'], 'minor, low and narrow, the melody sinking', 'quiet, shrinking dynamics', 'psychological drama score'),
+        flavour('modern', ['electric_piano_1', 'pad_8_sweep', 'fretless_bass'], 'muffled minor chords', 'slow, retreating', 'ambient, slowcore')),
+    emotion('Suffering', 'pain, illness, torture, long hardship',
+        flavour('classic', ['string_ensemble_1', 'cello', 'contrabass', 'english_horn'], 'minor, grinding suspensions over a lament bass', 'slow and strained', 'tragic orchestral'),
+        flavour('modern', ['electric_guitar_clean', 'distortion_guitar', 'string_ensemble_1'], 'drones and slow heavy minor chords', 'a crushing slow tempo', 'post-metal, doom')),
+    emotion('Sympathy', 'condolences, "I\'m sorry", sharing a burden',
+        flavour('classic', ['string_ensemble_1', 'french_horn', 'orchestral_harp'], 'minor turning to major, warm thirds', 'slow, gentle', 'consoling chamber music'),
+        flavour('modern', ['acoustic_grand_piano', 'acoustic_guitar_nylon', 'voice_oohs'], 'add9 chords', 'a soft pulse', 'piano ballad, lo-fi')),
 ].map(row => Object.freeze({
     ...row,
     flavours: Object.freeze(row.flavours.map(item => Object.freeze({ ...item, instruments: Object.freeze(item.instruments) }))),
 })));
 
-// The palette as prompt lines: each mood with its cues, then one line per flavour.
-export function moodPaletteToPromptSection(palette = MOOD_PALETTE) {
-    const lines = palette.flatMap(row => [
-        `${row.mood} (${row.cues}):`,
-        ...row.flavours.map(item =>
-            `- ${item.name} [${item.era}]: ${item.instruments.join(', ')}; ${item.harmony}; ${item.rhythm}; like ${item.styles}.`),
-    ]);
-    return `<mood_palette>\n${lines.join('\n')}\n</mood_palette>`;
+// The colour of a place or time, combined with the emotion.
+export const SETTING_PALETTE = Object.freeze([
+    { setting: 'old world, fantasy, taverns, quests', instruments: ['fiddle', 'recorder', 'accordion', 'harpsichord', 'dulcimer', 'bagpipe'], colour: 'dorian or mixolydian over drones, 3/4 dances; celtic folk, renaissance dance' },
+    { setting: 'frontier, desert, the open road', instruments: ['acoustic_guitar_steel', 'harmonica', 'banjo', 'whistle', 'trumpet'], colour: 'wide leaps, a loping or train beat; western, bluegrass, desert rock' },
+    { setting: 'future, machines, neon cities, space', instruments: ['lead_2_sawtooth', 'synth_bass_1', 'pad_3_polysynth', 'lead_1_square', 'fx_8_scifi'], colour: 'arpeggiated synths, a steady sixteenth pulse; synthwave, techno, chiptune' },
+    { setting: 'temples, ceremonies, royalty', instruments: ['church_organ', 'choir_aahs', 'tubular_bells', 'french_horn', 'brass_section'], colour: 'modal chorales, plagal cadences, slow processionals' },
+    { setting: 'noir city, rain, smoky bars', instruments: ['tenor_sax', 'muted_trumpet', 'acoustic_bass', 'acoustic_grand_piano', 'vibraphone'], colour: 'minor 7ths, blue notes, a slow swing' },
+    { setting: 'present day, school, the internet, the city', instruments: ['electric_piano_1', 'electric_guitar_clean', 'synth_bass_1', 'electric_bass_finger'], colour: 'contemporary pop, lo-fi, R&B or trap grooves' },
+].map(row => Object.freeze({ ...row, instruments: Object.freeze(row.instruments) })));
+
+function flavourText(item) {
+    return `[${item.era}] ${item.instruments.join(', ')}; ${item.harmony}; ${item.rhythm}; like ${item.styles}`;
+}
+
+// The palettes as prompt sections: one line per emotion, its flavours
+// separated by " | ", then one line per setting.
+export function moodPaletteToPromptSection(palette = MOOD_PALETTE, settings = SETTING_PALETTE) {
+    const emotions = palette.map(row => `- ${row.emotion} (${row.cues}): ${row.flavours.map(flavourText).join(' | ')}`);
+    const places = settings.map(row => `- ${row.setting}: ${row.instruments.join(', ')}; ${row.colour}`);
+    return `<mood_palette>\n${emotions.join('\n')}\n</mood_palette>\n<setting_palette>\n${places.join('\n')}\n</setting_palette>`;
 }
