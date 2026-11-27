@@ -5,7 +5,8 @@ import { escapeXml } from './xml.mjs';
 
 export const STORY_MESSAGE_LIMITS = Object.freeze({ min: 0, max: 40, default: 10 });
 const MAX_MESSAGE_LENGTH = 700;
-const MAX_STORY_LENGTH = 7000;
+// About 3,000 tokens: room for 16 long messages, the newest kept.
+const MAX_STORY_LENGTH = 12000;
 
 // A message as plain text: markup removed, whitespace collapsed, and a long
 // message cut from its start, since its end is where the scene stands now.

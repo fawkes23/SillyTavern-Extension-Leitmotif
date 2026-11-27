@@ -38,7 +38,8 @@ test('a long message keeps its end, and the newest messages win the length cap',
     assert.ok(story.length < 800);
     const many = Array.from({ length: 40 }, (_, index) => ({ name: 'A', mes: `${index} ${'x'.repeat(690)}` }));
     const capped = buildStoryExcerpt(many, { count: 40 });
-    assert.ok(capped.length <= 7100);
+    assert.ok(capped.length <= 12000);
     assert.ok(capped.includes('>39 '));
     assert.ok(!capped.includes('>0 '));
+    assert.ok(capped.split('\n').length >= 10);
 });

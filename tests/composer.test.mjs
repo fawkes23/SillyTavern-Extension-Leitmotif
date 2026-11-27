@@ -89,3 +89,27 @@ test('the composer adds a drums track only when the brief has drums', () => {
     assert.match(prompt, /kick, snare/);
     assert.doesNotMatch(prompt, /no drums track/);
 });
+
+test('without a story the prompt has no scene section or scene rule', () => {
+    const prompt = getComposerPrompt(character, options);
+    assert.doesNotMatch(prompt, /<recent_story>/);
+    assert.doesNotMatch(prompt, /Scene: <recent_story>/);
+});
+
+test('a story adds the scene section and rule, keeps the identity, and may allow drums', () => {
+    const story = '<message speaker="Vera">Steel rings in the dark.</message>';
+    const prompt = getComposerPrompt(character, { ...options, story });
+    assert.ok(prompt.includes(`<recent_story>\n${story}\n</recent_story>`));
+    assert.ok(prompt.indexOf('<recent_story>') < prompt.indexOf('<character_profile>'));
+    assert.match(prompt, /Scene: <recent_story> holds the latest chat messages/);
+    assert.match(prompt, /keep its motif, key centre and signature timbre recognisable/);
+    assert.match(prompt, /the scene wins/);
+    assert.match(prompt, /you may add a drums track \(instrument drum_kit/);
+    assert.match(prompt, /Write no drums track unless the scene rule above allows one/);
+    assert.match(prompt, /brief, profile and story text as reference material/);
+
+    const brief = parseBrief({ timbre: { drums: 'drum_kit' }, groove_cells: { bass: [0], harmony: [0.5], drums: [0, 1] } });
+    const withDrums = getComposerPrompt(character, { ...options, brief, story });
+    assert.doesNotMatch(withDrums, /you may add a drums track/);
+    assert.match(withDrums, /Drums: play the drum cell/);
+});
